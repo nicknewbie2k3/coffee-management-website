@@ -32,11 +32,11 @@
             {% endfor %}
         </tbody>
     </table>
-    <!-- Add New Order section moved here -->
     <h3>Add New Order</h3>
     <div class="mb-3">
         <label>Product:</label>
         <select name="new_productid" class="form-control">
+            <option value="" disabled selected>Select a product</option>
             {% for product in products %}
                 <option value="{{ product.productid }}">{{ product.name }}</option>
             {% endfor %}
@@ -44,18 +44,17 @@
     </div>
     <div class="mb-3">
         <label>Quantity:</label>
-        <input type="number" name="new_quantity" class="form-control" required>
+        <input type="number" name="new_quantity" class="form-control">
     </div>
     <div class="mb-3">
         <label>Customer Name:</label>
-        <input type="text" name="new_customer_name" class="form-control" required>
+        <input type="text" name="new_customer_name" class="form-control">
     </div>
     <div class="mb-3">
         <label>Order State:</label>
-        <input type="number" name="new_order_state" class="form-control" required>
+        <input type="number" name="new_order_state" class="form-control">
     </div>
     <button type="submit" name="action" value="add" class="btn btn-success">Add Order</button>
-    <!-- Existing buttons below -->
     <button type="submit" name="action" value="delete" class="btn btn-danger">Delete Selected</button>
     <button type="submit" name="action" value="edit" class="btn btn-warning">Edit Selected</button>
 </form>

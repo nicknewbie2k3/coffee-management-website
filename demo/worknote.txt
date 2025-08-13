@@ -1,0 +1,8 @@
+Make admin panel working with order database to be more straightforward.
+Order and OrderList really make things hard to track, while order views for admin should
+only have one table rendered.
+Temporary solution:
+
+Add vouchers and discounts to calculating final order price.
+Add final order price and discount into the order database.
+Fix minor UI bugs relating to ordering in makeOrder.html

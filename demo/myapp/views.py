@@ -13,8 +13,8 @@ def login(request):
         password = request.POST.get("password")
         user = authenticate(request, username=username, password=password)
         if user is not None:
-            auth_login(request, user)  # Sets session token
-            return redirect("home")    # Redirect to home page
+            auth_login(request, user) 
+            return redirect("home")   
         else:
             return render(request, "login.html", {"error": "Invalid credentials"})
     return render(request, "login.html")
@@ -92,7 +92,6 @@ def make_order(request):
                 }
             )
 
-        # All stock is sufficient, create order and order items
         order = OrderList.objects.create(
             customer_name=entered_customer_name,
             order_state=1
@@ -109,7 +108,7 @@ def make_order(request):
             product.save()
         return redirect("printBill")
 
-    # For GET or initial load, show one empty box
+
     if not product_boxes_data:
         product_boxes_data = [{"product_id": "", "quantity": ""}]
     return render(
@@ -126,7 +125,7 @@ def make_order(request):
 @login_required
 def print_bill(request):
     order = OrderList.objects.latest('orderid')
-    order_items = order.items.all()  # Use the related_name 'items'
+    order_items = order.items.all() 
     items_with_subtotal = [
         {
             "name": item.product.name,
@@ -160,7 +159,7 @@ def admin_login(request):
             user = authenticate(request, username=username, password=password)
             if user is not None:
                 auth_login(request, user)
-                return redirect("admin_page")  # Use the correct URL name
+                return redirect("admin_page") 
             else:
                 return render(request, "adminlogin.html", {"error": "Invalid credentials"})
         else:
@@ -203,6 +202,7 @@ def editproduct(request):
 
 def vieworder(request):
     edit_order = None
+    error = None
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "add":
@@ -210,13 +210,18 @@ def vieworder(request):
             quantity = request.POST.get("new_quantity")
             customer_name = request.POST.get("new_customer_name")
             order_state = request.POST.get("new_order_state")
-            if productid and quantity and customer_name and order_state:
+            if not (productid and quantity and customer_name and order_state):
+                error = "not enough information in the field"
+            else:
                 product = ProductList.objects.get(productid=productid)
-                OrderList.objects.create(
-                    productid=product,
-                    quantity=int(quantity),
+                order = OrderList.objects.create(
                     customer_name=customer_name,
-                    order_state=int(order_state)
+                    order_state=order_state
+                )
+                OrderItem.objects.create(
+                    order=order,
+                    product=product,
+                    quantity=quantity
                 )
         elif action == "delete":
             selected = request.POST.getlist("selected_orders")
@@ -237,4 +242,4 @@ def vieworder(request):
             order.save()
     orders = OrderList.objects.all()
     products = ProductList.objects.all()
-    return render(request, "vieworder.html", {"orders": orders, "edit_order": edit_order, "products": products})
+    return render(request, "vieworder.html", {"orders": orders, "edit_order": edit_order, "products": products, "error": error})
