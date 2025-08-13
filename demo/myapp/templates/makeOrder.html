@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Make Order{% endblock %}
+
+{% block content %}
+<h1>Make Order</h1>
+{% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+<form method="post" id="orderForm">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="customer_name">Customer Name:</label>
+        <input type="text" name="customer_name" id="customer_name" class="form-control"
+               value="{{ entered_customer_name }}">
+    </div>
+    <div id="product-boxes">
+        {% for box in product_boxes_data %}
+        <div class="form-group d-flex align-items-center product-box" style="border:1px solid #ccc; padding:15px; border-radius:8px; margin-bottom:10px;">
+            <div style="flex:1;">
+                <label>Product:</label>
+                <select name="product_{{ forloop.counter0 }}" class="form-control" required>
+                    {% for product in products %}
+                        <option value="{{ product.productid }}"
+                            {% if product.productid|stringformat:"s" == box.product_id|stringformat:"s" %}selected{% endif %}>
+                            {{ product.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <label class="mt-2">Quantity:</label>
+                <input type="number" name="quantity_{{ forloop.counter0 }}" class="form-control" required min="1"
+                       value="{{ box.quantity }}">
+            </div>
+            <button type="button" class="btn btn-success ml-2" onclick="addProductBox(this)" style="height:40px;">+</button>
+            <button type="button" class="btn btn-danger ml-2" onclick="removeProductBox(this)" style="height:40px;">-</button>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="d-flex align-items-center mt-3">
+        <button type="button" class="btn btn-primary mr-2" onclick="document.getElementById('orderImage').style.display='block'">Show Image</button>
+        <button type="submit" class="btn btn-primary">Verify Order</button>
+    </div>
+    <img id="orderImage" src="{% static 'image/qrCode.png' %}" alt="Order Submitted" style="display:none; margin-top:10px; max-width:200px;">
+</form>
+
+<script>
+let boxCount = {{ product_boxes_data|length}};
+function addProductBox(btn) {
+    const products = `{% for product in products %}<option value="{{ product.productid }}">{{ product.name }}</option>{% endfor %}`;
+    const box = document.createElement('div');
+    box.className = "form-group d-flex align-items-center product-box";
+    box.style = "border:1px solid #ccc; padding:15px; border-radius:8px; margin-bottom:10px;";
+    box.innerHTML = `
+        <div style="flex:1;">
+            <label>Product:</label>
+            <select name="product_${boxCount}" class="form-control" required>
+                ${products}
+            </select>
+            <label class="mt-2">Quantity:</label>
+            <input type="number" name="quantity_${boxCount}" class="form-control" required min="1">
+        </div>
+        <button type="button" class="btn btn-success ml-2" onclick="addProductBox(this)" style="height:40px;">+</button>
+        <button type="button" class="btn btn-danger ml-2" onclick="removeProductBox(this)" style="height:40px;">-</button>
+    `;
+    if (btn) {
+        btn.parentNode.parentNode.insertBefore(box, btn.parentNode.nextSibling);
+    } else {
+        document.getElementById('product-boxes').appendChild(box);
+    }
+    boxCount++;
+}
+
+function removeProductBox(btn) {
+    const box = btn.closest('.product-box');
+    if (document.querySelectorAll('.product-box').length > 1) {
+        box.remove();
+    }
+}
+</script>
+{% endblock %}

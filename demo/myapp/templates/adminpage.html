@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Page{% endblock %}
+
+{% block content %}
+{% if user.is_authenticated %}
+    <h2>Welcome, {{ user.username }} (Admin)</h2>
+    <button onclick="window.location.href='/adminpage/editproduct'">Edit product</button>
+    <button onclick="window.location.href='/adminpage/vieworder'">Edit orders</button>
+{% else %}
+    <div class="alert alert-danger">
+        You must be logged in to access the admin page.
+    </div>
+{% endif %}
+{% endblock %}
+
+

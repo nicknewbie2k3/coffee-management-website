@@ -1,0 +1,17 @@
+{% extends "base.html" %} {%block title %}Home Page{% endblock %}
+
+{% block content %}
+
+<p> This is the home page!</p>
+
+{% if user.is_authenticated %}
+
+<p> Welcome, {{ user.username }}!</p>
+
+<a href="/makeOrder">
+    <button type="button">Make Order</button>
+</a>
+
+{% endif %}
+
+{% endblock %}
