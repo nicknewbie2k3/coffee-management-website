@@ -206,23 +206,39 @@ def vieworder(request):
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "add":
-            productid = request.POST.get("new_productid")
-            quantity = request.POST.get("new_quantity")
-            customer_name = request.POST.get("new_customer_name")
-            order_state = request.POST.get("new_order_state")
-            if not (productid and quantity and customer_name and order_state):
+            customer_name = request.POST.get("new_customer_name", "")
+            order_state = request.POST.get("new_order_state", "")
+            # Gather all product/quantity pairs
+            product_boxes = []
+            i = 0
+            while True:
+                product_key = f"product_{i}"
+                quantity_key = f"quantity_{i}"
+                if product_key in request.POST and quantity_key in request.POST:
+                    product_id = request.POST.get(product_key)
+                    quantity = request.POST.get(quantity_key)
+                    if product_id and quantity:
+                        product_boxes.append((product_id, quantity))
+                    i += 1
+                else:
+                    break
+
+            if not (customer_name and order_state and product_boxes):
                 error = "not enough information in the field"
             else:
-                product = ProductList.objects.get(productid=productid)
+                # Create the order
                 order = OrderList.objects.create(
                     customer_name=customer_name,
                     order_state=order_state
                 )
-                OrderItem.objects.create(
-                    order=order,
-                    product=product,
-                    quantity=quantity
-                )
+                # Create order items
+                for product_id, quantity in product_boxes:
+                    product = ProductList.objects.get(productid=product_id)
+                    OrderItem.objects.create(
+                        order=order,
+                        product=product,
+                        quantity=quantity
+                    )
         elif action == "delete":
             selected = request.POST.getlist("selected_orders")
             OrderList.objects.filter(orderid__in=selected).delete()
@@ -230,16 +246,53 @@ def vieworder(request):
             selected = request.POST.getlist("selected_orders")
             if selected:
                 edit_order = OrderList.objects.get(orderid=selected[0])
-        elif action == "save_edit":
+        elif request.method == "POST" and request.POST.get("action") == "save_edit":
             orderid = request.POST.get("edit_orderid")
-            quantity = request.POST.get("edit_quantity")
             customer_name = request.POST.get("edit_customer_name")
             order_state = request.POST.get("edit_order_state")
             order = OrderList.objects.get(orderid=orderid)
-            order.quantity = int(quantity)
+            # Remove all existing items for this order
+            order.items.all().delete()
+            # Gather all product/quantity pairs
+            edit_product_boxes = []
+            i = 0
+            while True:
+                product_key = f"edit_product_{i}"
+                quantity_key = f"edit_quantity_{i}"
+                if product_key in request.POST and quantity_key in request.POST:
+                    product_id = request.POST.get(product_key)
+                    quantity = request.POST.get(quantity_key)
+                    if product_id and quantity:
+                        edit_product_boxes.append((product_id, quantity))
+                    i += 1
+                else:
+                    break
+            # Add new items
+            for product_id, quantity in edit_product_boxes:
+                product = ProductList.objects.get(productid=product_id)
+                OrderItem.objects.create(
+                    order=order,
+                    product=product,
+                    quantity=quantity
+                )
+            # Update order info
             order.customer_name = customer_name
-            order.order_state = int(order_state)
+            order.order_state = order_state
             order.save()
-    orders = OrderList.objects.all()
+    # For displaying orders with their items:
+    orders = OrderList.objects.all().order_by('-orderid')
+    order_data = []
+    for order in orders:
+        items = order.items.all()
+        products_str = ", ".join([f"{item.quantity} {item.product.name}" for item in items])
+        order_data.append({
+            "order": order,
+            "products_str": products_str,
+        })
     products = ProductList.objects.all()
-    return render(request, "vieworder.html", {"orders": orders, "edit_order": edit_order, "products": products, "error": error})
+    return render(request, "vieworder.html", {
+        "order_data": order_data,
+        "products": products,
+        "edit_order": edit_order,
+        "error": error,
+    })

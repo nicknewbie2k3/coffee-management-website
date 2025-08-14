@@ -11,40 +11,47 @@
             <tr>
                 <th>Select</th>
                 <th>Order ID</th>
-                <th>Product</th>
-                <th>Quantity</th>
+                <th>Products</th>
                 <th>Customer Name</th>
                 <th>Order State</th>
             </tr>
         </thead>
         <tbody>
-            {% for order in orders %}
+            {% for entry in order_data %}
             <tr>
                 <td>
-                    <input type="checkbox" name="selected_orders" value="{{ order.orderid }}">
+                    <input type="checkbox" name="selected_orders" value="{{ entry.order.orderid }}">
                 </td>
-                <td>{{ order.orderid }}</td>
-                <td>{{ order.productid.name }}</td>
-                <td>{{ order.quantity }}</td>
-                <td>{{ order.customer_name }}</td>
-                <td>{{ order.order_state }}</td>
+                <td>{{ entry.order.orderid }}</td>
+                <td>{{ entry.products_str }}</td>
+                <td>{{ entry.order.customer_name }}</td>
+                <td>{{ entry.order.order_state }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     <h3>Add New Order</h3>
-    <div class="mb-3">
-        <label>Product:</label>
-        <select name="new_productid" class="form-control">
-            <option value="" disabled selected>Select a product</option>
-            {% for product in products %}
-                <option value="{{ product.productid }}">{{ product.name }}</option>
-            {% endfor %}
-        </select>
+    <div id="order-error">
+        {% if error %}
+          <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
     </div>
-    <div class="mb-3">
-        <label>Quantity:</label>
-        <input type="number" name="new_quantity" class="form-control">
+    <div id="product-boxes">
+        <div class="form-group d-flex align-items-center product-box" style="border:1px solid #ccc; padding:15px; border-radius:8px; margin-bottom:10px;">
+            <div style="flex:1;">
+                <label>Product:</label>
+                <select name="product_0" class="form-control">
+                    <option value="" disabled selected>Select a product</option>
+                    {% for product in products %}
+                        <option value="{{ product.productid }}">{{ product.name }}</option>
+                    {% endfor %}
+                </select>
+                <label class="mt-2">Quantity:</label>
+                <input type="number" name="quantity_0" class="form-control" min="1">
+            </div>
+            <button type="button" class="btn btn-success ml-2" onclick="addProductBox(this)" style="height:40px;">+</button>
+            <button type="button" class="btn btn-danger ml-2" onclick="removeProductBox(this)" style="height:40px;">-</button>
+        </div>
     </div>
     <div class="mb-3">
         <label>Customer Name:</label>
@@ -64,9 +71,27 @@
 <form method="post">
     {% csrf_token %}
     <input type="hidden" name="edit_orderid" value="{{ edit_order.orderid }}">
-    <div class="mb-3">
-        <label>Quantity:</label>
-        <input type="number" name="edit_quantity" value="{{ edit_order.quantity }}" class="form-control">
+    <div id="edit-product-boxes">
+        {% for item in edit_order.items.all %}
+        <div class="form-group d-flex align-items-center edit-product-box" style="border:1px solid #ccc; padding:15px; border-radius:8px; margin-bottom:10px;">
+            <div style="flex:1;">
+                <label>Product:</label>
+                <select name="edit_product_{{ forloop.counter0 }}" class="form-control">
+                    <option value="" disabled>Select a product</option>
+                    {% for product in products %}
+                        <option value="{{ product.productid }}"
+                            {% if product.productid == item.product.productid %}selected{% endif %}>
+                            {{ product.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <label class="mt-2">Quantity:</label>
+                <input type="number" name="edit_quantity_{{ forloop.counter0 }}" class="form-control" min="1" value="{{ item.quantity }}">
+            </div>
+            <button type="button" class="btn btn-success ml-2" onclick="addEditProductBox(this)" style="height:40px;">+</button>
+            <button type="button" class="btn btn-danger ml-2" onclick="removeEditProductBox(this)" style="height:40px;">-</button>
+        </div>
+        {% endfor %}
     </div>
     <div class="mb-3">
         <label>Customer Name:</label>
@@ -78,5 +103,73 @@
     </div>
     <button type="submit" name="action" value="save_edit" class="btn btn-primary">Save Changes</button>
 </form>
+<script>
+let editBoxCount = {{ edit_order.items.count }};
+function addEditProductBox(btn) {
+    const products = `{% for product in products %}<option value="{{ product.productid }}">{{ product.name }}</option>{% endfor %}`;
+    const box = document.createElement('div');
+    box.className = "form-group d-flex align-items-center edit-product-box";
+    box.style = "border:1px solid #ccc; padding:15px; border-radius:8px; margin-bottom:10px;";
+    box.innerHTML = `
+        <div style="flex:1;">
+            <label>Product:</label>
+            <select name="edit_product_${editBoxCount}" class="form-control">
+                <option value="" disabled selected>Select a product</option>
+                ${products}
+            </select>
+            <label class="mt-2">Quantity:</label>
+            <input type="number" name="edit_quantity_${editBoxCount}" class="form-control" min="1">
+        </div>
+        <button type="button" class="btn btn-success ml-2" onclick="addEditProductBox(this)" style="height:40px;">+</button>
+        <button type="button" class="btn btn-danger ml-2" onclick="removeEditProductBox(this)" style="height:40px;">-</button>
+    `;
+    if (btn) {
+        btn.parentNode.parentNode.insertBefore(box, btn.parentNode.nextSibling);
+    } else {
+        document.getElementById('edit-product-boxes').appendChild(box);
+    }
+    editBoxCount++;
+}
+function removeEditProductBox(btn) {
+    const box = btn.closest('.edit-product-box');
+    if (document.querySelectorAll('.edit-product-box').length > 1) {
+        box.remove();
+    }
+}
+</script>
 {% endif %}
+<script>
+let boxCount = 1;
+function addProductBox(btn) {
+    const products = `{% for product in products %}<option value="{{ product.productid }}">{{ product.name }}</option>{% endfor %}`;
+    const box = document.createElement('div');
+    box.className = "form-group d-flex align-items-center product-box";
+    box.style = "border:1px solid #ccc; padding:15px; border-radius:8px; margin-bottom:10px;";
+    box.innerHTML = `
+        <div style="flex:1;">
+            <label>Product:</label>
+            <select name="product_${boxCount}" class="form-control">
+                <option value="" disabled selected>Select a product</option>
+                ${products}
+            </select>
+            <label class="mt-2">Quantity:</label>
+            <input type="number" name="quantity_${boxCount}" class="form-control" min="1">
+        </div>
+        <button type="button" class="btn btn-success ml-2" onclick="addProductBox(this)" style="height:40px;">+</button>
+        <button type="button" class="btn btn-danger ml-2" onclick="removeProductBox(this)" style="height:40px;">-</button>
+    `;
+    if (btn) {
+        btn.parentNode.parentNode.insertBefore(box, btn.parentNode.nextSibling);
+    } else {
+        document.getElementById('product-boxes').appendChild(box);
+    }
+    boxCount++;
+}
+function removeProductBox(btn) {
+    const box = btn.closest('.product-box');
+    if (document.querySelectorAll('.product-box').length > 1) {
+        box.remove();
+    }
+}
+</script>
 {% endblock %}
