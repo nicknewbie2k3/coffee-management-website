@@ -2,6 +2,7 @@ from django.contrib.auth import authenticate, login as auth_login, logout as aut
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from .models import ProductList, OrderList, OrderItem
+from decimal import Decimal
 
 # Create your views here.
 def home(request):
@@ -27,10 +28,13 @@ def logout(request):
 def make_order(request):
     error = None
     entered_customer_name = ""
+    entered_voucher = ""
     products = ProductList.objects.all()
     product_boxes_data = []
     if request.method == "POST":
         entered_customer_name = request.POST.get("customer_name", "")
+        entered_voucher = request.POST.get("voucher_discount", "")
+        voucher_discount = Decimal(entered_voucher) if entered_voucher else Decimal('0')
         i = 0
         while True:
             product_key = f"product_{i}"
@@ -55,17 +59,21 @@ def make_order(request):
                     "products": products,
                     "error": error,
                     "entered_customer_name": entered_customer_name,
+                    "entered_voucher": entered_voucher,
                     "product_boxes_data": product_boxes_data,
                 }
             )
 
         insufficient_stock = []
+        total = Decimal('0')
         for box in product_boxes_data:
             try:
                 product = ProductList.objects.get(productid=box["product_id"])
                 qty = int(box["quantity"])
                 if qty > product.stock:
                     insufficient_stock.append(product.name)
+                else:
+                    total += qty * product.price
             except (ProductList.DoesNotExist, ValueError):
                 error = "Invalid product or quantity."
                 return render(
@@ -75,6 +83,7 @@ def make_order(request):
                         "products": products,
                         "error": error,
                         "entered_customer_name": entered_customer_name,
+                        "entered_voucher": entered_voucher,
                         "product_boxes_data": product_boxes_data,
                     }
                 )
@@ -88,13 +97,21 @@ def make_order(request):
                     "products": products,
                     "error": error,
                     "entered_customer_name": entered_customer_name,
+                    "entered_voucher": entered_voucher,
                     "product_boxes_data": product_boxes_data,
                 }
             )
 
+        # Apply voucher discount
+        discount_amount = total * (voucher_discount / Decimal('100'))
+        final_price = total - discount_amount
+
+        # All stock is sufficient, create order and order items
         order = OrderList.objects.create(
             customer_name=entered_customer_name,
-            order_state=1
+            order_state=1,
+            voucher_discount=voucher_discount,
+            final_price=final_price
         )
         for box in product_boxes_data:
             product = ProductList.objects.get(productid=box["product_id"])
@@ -108,7 +125,6 @@ def make_order(request):
             product.save()
         return redirect("printBill")
 
-
     if not product_boxes_data:
         product_boxes_data = [{"product_id": "", "quantity": ""}]
     return render(
@@ -118,6 +134,7 @@ def make_order(request):
             "products": products,
             "error": error,
             "entered_customer_name": entered_customer_name,
+            "entered_voucher": entered_voucher,
             "product_boxes_data": product_boxes_data,
         }
     )

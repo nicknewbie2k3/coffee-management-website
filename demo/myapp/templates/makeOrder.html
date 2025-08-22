@@ -38,6 +38,12 @@
         {% endfor %}
     </div>
 
+    <div class="form-group">
+        <label for="voucher_discount">Voucher Discount (%):</label>
+        <input type="number" name="voucher_discount" id="voucher_discount" class="form-control"
+               value="{{ entered_voucher }}">
+    </div>
+
     <div class="d-flex align-items-center mt-3">
         <button type="button" class="btn btn-primary mr-2" onclick="document.getElementById('orderImage').style.display='block'">Show Image</button>
         <button type="submit" class="btn btn-primary">Verify Order</button>
