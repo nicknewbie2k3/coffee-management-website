@@ -1,36 +1,55 @@
 {% extends "base.html" %}
+{% load static %}
+{% load humanize %}
 
 {% block title %}Print Bill{% endblock %}
 
 {% block content %}
-<h1>Bill information</h1>
-<p>Order ID: {{ order.orderid }}</p>
-<p>Customer Name: {{ order.customer_name }}</p>
-
-<table class="table">
-    <thead>
-        <tr>
-            <th>Product</th>
-            <th>Quantity</th>
-            <th>Price</th>
-            <th>Subtotal</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for item in items_with_subtotal %}
-        <tr>
-            <td>{{ item.name }}</td>
-            <td>{{ item.quantity }}</td>
-            <td>{{ item.price }}</td>
-            <td>{{ item.subtotal }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-<p><strong>Total: {{ total }}</strong></p>
-<p>Voucher Discount: {{ order.voucher_discount }}%</p>
-<p><strong>Final Price: {{ order.final_price }}</strong></p>
-
-<button onclick="window.print()">Print Bill</button>
-<button onclick="window.location.href='/'">Home</button>
+<div class="container my-5 d-flex justify-content-center">
+    <div class="card shadow" style="min-width:350px; max-width:600px;">
+        <div class="card-header bg-primary text-white text-center">
+            <img src="{% static 'image/qrCode.png' %}" alt="Logo" style="height:48px;" class="mb-2">
+            <h2 class="mb-0">Coffee Management</h2>
+            <small class="text-white-50">{{ order.order_date|date:"Y-m-d H:i" }}</small>
+        </div>
+        <div class="card-body">
+            <h4 class="mb-3">Bill information</h4>
+            <p><strong>Order ID:</strong> {{ order.orderid }}</p>
+            <p><strong>Customer Name:</strong> {{ order.customer_name }}</p>
+            <table class="table table-striped table-bordered table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Product</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items_with_subtotal %}
+                    <tr>
+                        <td>{{ item.name }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>₫{{ item.price|floatformat:0|intcomma }}</td>
+                        <td>₫{{ item.subtotal|floatformat:0|intcomma }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="mt-3">
+                <p><strong>Total:</strong> ₫{{ total|floatformat:0|intcomma }}</p>
+                <p><strong>Voucher Discount:</strong> {{ order.voucher_discount }}%</p>
+                <p class="fs-5"><strong>Final Price:</strong> <span class="text-success">₫{{ order.final_price|floatformat:0|intcomma }}</span></p>
+            </div>
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+            <button onclick="window.print()" class="btn btn-outline-secondary">
+                <i class="bi bi-printer"></i> Print Bill
+            </button>
+            <a href="/" class="btn btn-primary">
+                <i class="bi bi-house-door"></i> Back to Home
+            </a>
+        </div>
+    </div>
+</div>
 {% endblock %}

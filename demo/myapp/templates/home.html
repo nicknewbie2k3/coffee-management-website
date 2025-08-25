@@ -1,17 +1,30 @@
-{% extends "base.html" %} {%block title %}Home Page{% endblock %}
+{% extends "base.html" %}
+{% block title %}Home Page{% endblock %}
 
 {% block content %}
+<div class="d-flex flex-column justify-content-center align-items-center min-vh-100">
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold">Welcome to Coffee Management!</h1>
+        <p class="lead">Easily manage products, orders, and billing for your coffee shop.</p>
+    </div>
 
-<p> This is the home page!</p>
+    {% if user.is_authenticated %}
+    <div class="mb-4">
+        <p class="h5">Welcome, {{ user.username }}!
+            <span class="badge bg-secondary ms-2">Admin</span>
+        </p>
+    </div>
+    <a href="/makeOrder">
+        <button type="button" class="btn btn-primary btn-lg px-4 py-2 shadow">
+            <i class="bi bi-cart-plus me-2"></i>
+            Make Order
+        </button>
+    </a>
+    {% endif %}
 
-{% if user.is_authenticated %}
-
-<p> Welcome, {{ user.username }}!</p>
-
-<a href="/makeOrder">
-    <button type="button">Make Order</button>
-</a>
-
-{% endif %}
-
+    <footer class="mt-5 text-center text-muted small">
+        <hr>
+        &copy; {{ now|date:"Y" }} Coffee Management &mdash; v1.0 &middot; Contact: huuphucenglish@gmail.com
+    </footer>
+</div>
 {% endblock %}

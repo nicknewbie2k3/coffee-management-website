@@ -10,79 +10,177 @@
 {% endif %}
 <form method="post" id="orderForm">
     {% csrf_token %}
-    <div class="form-group">
-        <label for="customer_name">Customer Name:</label>
-        <input type="text" name="customer_name" id="customer_name" class="form-control"
-               value="{{ entered_customer_name }}">
-    </div>
-    <div id="product-boxes">
-        {% for box in product_boxes_data %}
-        <div class="form-group d-flex align-items-center product-box" style="border:1px solid #ccc; padding:15px; border-radius:8px; margin-bottom:10px;">
-            <div style="flex:1;">
-                <label>Product:</label>
-                <select name="product_{{ forloop.counter0 }}" class="form-control" required>
-                    {% for product in products %}
-                        <option value="{{ product.productid }}"
-                            {% if product.productid|stringformat:"s" == box.product_id|stringformat:"s" %}selected{% endif %}>
-                            {{ product.name }}
-                        </option>
-                    {% endfor %}
-                </select>
-                <label class="mt-2">Quantity:</label>
-                <input type="number" name="quantity_{{ forloop.counter0 }}" class="form-control" required min="1"
-                       value="{{ box.quantity }}">
+    <fieldset class="card shadow-sm mb-4">
+        <legend class="card-header bg-primary text-white">Customer & Voucher</legend>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="customer_name" class="form-label">Customer Name:</label>
+                    <input type="text" name="customer_name" id="customer_name" class="form-control"
+                           value="{{ entered_customer_name }}" placeholder="Enter customer name" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="voucher_discount" class="form-label">Voucher Discount (%):</label>
+                    <input type="number" name="voucher_discount" id="voucher_discount" class="form-control"
+                           value="{{ entered_voucher }}" min="0" max="100" placeholder="e.g. 10 for 10%" data-bs-toggle="tooltip" title="Enter a discount percentage if available">
+                </div>
             </div>
-            <button type="button" class="btn btn-success ml-2" onclick="addProductBox(this)" style="height:40px;">+</button>
-            <button type="button" class="btn btn-danger ml-2" onclick="removeProductBox(this)" style="height:40px;">-</button>
         </div>
-        {% endfor %}
-    </div>
+    </fieldset>
 
-    <div class="form-group">
-        <label for="voucher_discount">Voucher Discount (%):</label>
-        <input type="number" name="voucher_discount" id="voucher_discount" class="form-control"
-               value="{{ entered_voucher }}">
+    <fieldset class="card shadow-sm mb-4">
+        <legend class="card-header bg-success text-white">Products</legend>
+        <div class="card-body" id="product-boxes">
+            {% for box in product_boxes_data %}
+            <div class="row align-items-end product-box g-2 mb-3 p-3 border rounded bg-light">
+                <div class="col-md-6">
+                    <label class="form-label">Product:</label>
+                    <select name="product_{{ forloop.counter0 }}" class="form-select" required data-bs-toggle="tooltip" title="Select a product">
+                        <option value="" disabled>Select a product</option>
+                        {% for product in products %}
+                            <option value="{{ product.productid }}"
+                                {% if product.productid|stringformat:"s" == box.product_id|stringformat:"s" %}selected{% endif %}>
+                                {{ product.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Quantity:</label>
+                    <input type="number" name="quantity_{{ forloop.counter0 }}" class="form-control" required min="1"
+                           value="{{ box.quantity }}" placeholder="Enter quantity" data-bs-toggle="tooltip" title="How many?">
+                </div>
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="button" class="btn btn-success btn-lg" onclick="addProductBox(this)">
+                        <i class="bi bi-plus-circle"></i>
+                    </button>
+                    <button type="button" class="btn btn-danger btn-lg" onclick="removeProductBox(this)">
+                        <i class="bi bi-dash-circle"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </fieldset>
+
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">Order Summary</div>
+        <div class="card-body">
+            <div id="order-summary">
+                <span class="text-muted">Add products to see the total price.</span>
+            </div>
+        </div>
     </div>
 
     <div class="d-flex align-items-center mt-3">
-        <button type="button" class="btn btn-primary mr-2" onclick="document.getElementById('orderImage').style.display='block'">Show Image</button>
+        <button type="button" class="btn btn-primary me-2" onclick="document.getElementById('orderImage').style.display='block'">Show Image</button>
         <button type="submit" class="btn btn-primary">Verify Order</button>
     </div>
     <img id="orderImage" src="{% static 'image/qrCode.png' %}" alt="Order Submitted" style="display:none; margin-top:10px; max-width:200px;">
 </form>
 
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
 <script>
-let boxCount = {{ product_boxes_data|length}};
+let boxCount = {{ product_boxes_data|length }};
 function addProductBox(btn) {
     const products = `{% for product in products %}<option value="{{ product.productid }}">{{ product.name }}</option>{% endfor %}`;
     const box = document.createElement('div');
-    box.className = "form-group d-flex align-items-center product-box";
-    box.style = "border:1px solid #ccc; padding:15px; border-radius:8px; margin-bottom:10px;";
+    box.className = "row align-items-end product-box g-2 mb-3 p-3 border rounded bg-light";
     box.innerHTML = `
-        <div style="flex:1;">
-            <label>Product:</label>
-            <select name="product_${boxCount}" class="form-control" required>
+        <div class="col-md-6">
+            <label class="form-label">Product:</label>
+            <select name="product_${boxCount}" class="form-select" required data-bs-toggle="tooltip" title="Select a product">
+                <option value="" disabled selected>Select a product</option>
                 ${products}
             </select>
-            <label class="mt-2">Quantity:</label>
-            <input type="number" name="quantity_${boxCount}" class="form-control" required min="1">
         </div>
-        <button type="button" class="btn btn-success ml-2" onclick="addProductBox(this)" style="height:40px;">+</button>
-        <button type="button" class="btn btn-danger ml-2" onclick="removeProductBox(this)" style="height:40px;">-</button>
+        <div class="col-md-4">
+            <label class="form-label">Quantity:</label>
+            <input type="number" name="quantity_${boxCount}" class="form-control" required min="1" placeholder="Enter quantity" data-bs-toggle="tooltip" title="How many?">
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="button" class="btn btn-success btn-lg" onclick="addProductBox(this)">
+                <i class="bi bi-plus-circle"></i>
+            </button>
+            <button type="button" class="btn btn-danger btn-lg" onclick="removeProductBox(this)">
+                <i class="bi bi-dash-circle"></i>
+            </button>
+        </div>
     `;
     if (btn) {
-        btn.parentNode.parentNode.insertBefore(box, btn.parentNode.nextSibling);
+        btn.parentNode.parentNode.parentNode.insertBefore(box, btn.parentNode.parentNode.nextSibling);
     } else {
         document.getElementById('product-boxes').appendChild(box);
     }
     boxCount++;
+    enableTooltips();
+    updateSummary();
 }
 
 function removeProductBox(btn) {
     const box = btn.closest('.product-box');
     if (document.querySelectorAll('.product-box').length > 1) {
         box.remove();
+        updateSummary();
     }
 }
+
+function updateSummary() {
+    const productBoxes = document.querySelectorAll('.product-box');
+    let summary = [];
+    let total = 0;
+    {% for product in products %}
+    const price_{{ product.productid }} = {{ product.price }};
+    {% endfor %}
+    productBoxes.forEach(box => {
+        const productSelect = box.querySelector('select');
+        const quantityInput = box.querySelector('input[type="number"]');
+        if (productSelect && quantityInput && productSelect.value && quantityInput.value) {
+            const productId = productSelect.value;
+            const quantity = parseInt(quantityInput.value) || 0;
+            let price = 0;
+            switch(productId) {
+                {% for product in products %}
+                case "{{ product.productid }}":
+                    price = price_{{ product.productid }};
+                    break;
+                {% endfor %}
+            }
+            summary.push(`${quantity} × {{ product.name }} (đ${price} each)`);
+            total += price * quantity;
+        }
+    });
+    // Apply voucher discount
+    let voucher = parseFloat(document.getElementById('voucher_discount').value) || 0;
+    let discount = total * (voucher / 100);
+    let finalTotal = total - discount;
+    let html = '';
+    if (summary.length) {
+        html += `<ul class="mb-2">`;
+        summary.forEach(line => html += `<li>${line}</li>`);
+        html += `</ul>`;
+        html += `<div><strong>Subtotal:</strong> đ${total.toFixed(2)}</div>`;
+        html += `<div><strong>Voucher Discount:</strong> ${voucher}%</div>`;
+        html += `<div><strong>Final Total:</strong> đ${finalTotal.toFixed(2)}</div>`;
+    } else {
+        html = '<span class="text-muted">Add products to see the total price.</span>';
+    }
+    document.getElementById('order-summary').innerHTML = html;
+}
+
+// Enable Bootstrap tooltips
+function enableTooltips() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+}
+enableTooltips();
+updateSummary();
+
+// Update summary live
+document.getElementById('product-boxes').addEventListener('input', updateSummary);
+document.getElementById('voucher_discount').addEventListener('input', updateSummary);
 </script>
 {% endblock %}

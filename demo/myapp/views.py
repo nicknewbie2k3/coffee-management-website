@@ -4,128 +4,9 @@ from django.shortcuts import render, redirect
 from .models import ProductList, OrderList, OrderItem
 from decimal import Decimal
 
-# Create your views here.
-def home(request):
-    return render(request, 'home.html')
 
-def login(request):
-    if request.method == "POST":
-        username = request.POST.get("username")
-        password = request.POST.get("password")
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            auth_login(request, user) 
-            return redirect("home")   
-        else:
-            return render(request, "login.html", {"error": "Invalid credentials"})
-    return render(request, "login.html")
-
-def logout(request):
-    auth_logout(request)
-    return redirect("home")
-
-@login_required
-def make_order(request):
-    error = None
-    entered_customer_name = ""
-    entered_voucher = ""
-    products = ProductList.objects.all()
-    product_boxes_data = []
-    if request.method == "POST":
-        entered_customer_name = request.POST.get("customer_name", "")
-        entered_voucher = request.POST.get("voucher_discount", "")
-        voucher_discount = Decimal(entered_voucher) if entered_voucher else Decimal('0')
-        i = 0
-        while True:
-            product_key = f"product_{i}"
-            quantity_key = f"quantity_{i}"
-            if product_key in request.POST and quantity_key in request.POST:
-                product_id = request.POST.get(product_key)
-                quantity = request.POST.get(quantity_key)
-                product_boxes_data.append({
-                    "product_id": product_id,
-                    "quantity": quantity,
-                })
-                i += 1
-            else:
-                break
-
-        if not product_boxes_data:
-            error = "Please add at least one product."
-            return render(
-                request,
-                "makeOrder.html",
-                {
-                    "products": products,
-                    "error": error,
-                    "entered_customer_name": entered_customer_name,
-                    "entered_voucher": entered_voucher,
-                    "product_boxes_data": product_boxes_data,
-                }
-            )
-
-        insufficient_stock = []
-        total = Decimal('0')
-        for box in product_boxes_data:
-            try:
-                product = ProductList.objects.get(productid=box["product_id"])
-                qty = int(box["quantity"])
-                if qty > product.stock:
-                    insufficient_stock.append(product.name)
-                else:
-                    total += qty * product.price
-            except (ProductList.DoesNotExist, ValueError):
-                error = "Invalid product or quantity."
-                return render(
-                    request,
-                    "makeOrder.html",
-                    {
-                        "products": products,
-                        "error": error,
-                        "entered_customer_name": entered_customer_name,
-                        "entered_voucher": entered_voucher,
-                        "product_boxes_data": product_boxes_data,
-                    }
-                )
-
-        if insufficient_stock:
-            error = "We don't have enough stocks for: " + ", ".join(insufficient_stock)
-            return render(
-                request,
-                "makeOrder.html",
-                {
-                    "products": products,
-                    "error": error,
-                    "entered_customer_name": entered_customer_name,
-                    "entered_voucher": entered_voucher,
-                    "product_boxes_data": product_boxes_data,
-                }
-            )
-
-        # Apply voucher discount
-        discount_amount = total * (voucher_discount / Decimal('100'))
-        final_price = total - discount_amount
-
-        # All stock is sufficient, create order and order items
-        order = OrderList.objects.create(
-            customer_name=entered_customer_name,
-            order_state=1,
-            voucher_discount=voucher_discount,
-            final_price=final_price
-        )
-        for box in product_boxes_data:
-            product = ProductList.objects.get(productid=box["product_id"])
-            qty = int(box["quantity"])
-            OrderItem.objects.create(
-                order=order,
-                product=product,
-                quantity=qty
-            )
-            product.stock -= qty
-            product.save()
-        return redirect("printBill")
-
-    if not product_boxes_data:
+def render_make_order(request, products, error=None, entered_customer_name="", entered_voucher="", product_boxes_data=None):
+    if product_boxes_data is None or not product_boxes_data:
         product_boxes_data = [{"product_id": "", "quantity": ""}]
     return render(
         request,
@@ -139,10 +20,107 @@ def make_order(request):
         }
     )
 
+def render_edit_product(request, edit_product=None):
+    products = ProductList.objects.all()
+    return render(request, "editproduct.html", {"products": products, "edit_product": edit_product})
+
+def render_view_order(request, order_data, products, edit_order=None, error=None):
+    return render(request, "vieworder.html", {
+        "order_data": order_data,
+        "products": products,
+        "edit_order": edit_order,
+        "error": error,
+    })
+
+
+def home(request):
+    return render(request, 'home.html')
+
+def login(request):
+    if request.method == "POST":
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+        user = authenticate(request, username=username, password=password)
+        if user:
+            auth_login(request, user)
+            return redirect("home")
+        return render(request, "login.html", {"error": "Invalid credentials"})
+    return render(request, "login.html")
+
+def logout(request):
+    auth_logout(request)
+    return redirect("home")
+
+@login_required
+def make_order(request):
+    products = ProductList.objects.all()
+    error = None
+    entered_customer_name = ""
+    entered_voucher = ""
+    product_boxes_data = []
+
+    if request.method == "POST":
+        entered_customer_name = request.POST.get("customer_name", "")
+        entered_voucher = request.POST.get("voucher_discount", "")
+        voucher_discount = Decimal(entered_voucher) if entered_voucher else Decimal('0')
+
+        i = 0
+        while True:
+            product_key = f"product_{i}"
+            quantity_key = f"quantity_{i}"
+            if product_key in request.POST and quantity_key in request.POST:
+                product_id = request.POST.get(product_key)
+                quantity = request.POST.get(quantity_key)
+                product_boxes_data.append({"product_id": product_id, "quantity": quantity})
+                i += 1
+            else:
+                break
+
+        if not product_boxes_data:
+            error = "Please add at least one product."
+            return render_make_order(request, products, error, entered_customer_name, entered_voucher, product_boxes_data)
+
+        insufficient_stock = []
+        total = Decimal('0')
+        for box in product_boxes_data:
+            try:
+                product = ProductList.objects.get(productid=box["product_id"])
+                qty = int(box["quantity"])
+                if qty > product.stock:
+                    insufficient_stock.append(product.name)
+                else:
+                    total += qty * product.price
+            except (ProductList.DoesNotExist, ValueError):
+                error = "Invalid product or quantity."
+                return render_make_order(request, products, error, entered_customer_name, entered_voucher, product_boxes_data)
+
+        if insufficient_stock:
+            error = "We don't have enough stocks for: " + ", ".join(insufficient_stock)
+            return render_make_order(request, products, error, entered_customer_name, entered_voucher, product_boxes_data)
+
+        discount_amount = total * (voucher_discount / Decimal('100'))
+        final_price = total - discount_amount
+
+        order = OrderList.objects.create(
+            customer_name=entered_customer_name,
+            order_state=1,
+            voucher_discount=voucher_discount,
+            final_price=final_price
+        )
+        for box in product_boxes_data:
+            product = ProductList.objects.get(productid=box["product_id"])
+            qty = int(box["quantity"])
+            OrderItem.objects.create(order=order, product=product, quantity=qty)
+            product.stock -= qty
+            product.save()
+        return redirect("printBill")
+
+    return render_make_order(request, products, error, entered_customer_name, entered_voucher, product_boxes_data)
+
 @login_required
 def print_bill(request):
     order = OrderList.objects.latest('orderid')
-    order_items = order.items.all() 
+    order_items = order.items.all()
     items_with_subtotal = [
         {
             "name": item.product.name,
@@ -163,10 +141,9 @@ def print_bill(request):
 def admin_page(request):
     if request.user.username == "admin":
         return render(request, "adminpage.html")
-    else:
-        return render(request, "home.html", {
-            "error": "You must be logged in as admin to access the admin page."
-        })
+    return render(request, "home.html", {
+        "error": "You must be logged in as admin to access the admin page."
+    })
 
 def admin_login(request):
     if request.method == "POST":
@@ -174,13 +151,11 @@ def admin_login(request):
         password = request.POST.get("password")
         if username == "admin":
             user = authenticate(request, username=username, password=password)
-            if user is not None:
+            if user:
                 auth_login(request, user)
-                return redirect("admin_page") 
-            else:
-                return render(request, "adminlogin.html", {"error": "Invalid credentials"})
-        else:
-            return render(request, "adminlogin.html", {"error": "Only admin can log in here"})
+                return redirect("admin_page")
+            return render(request, "adminlogin.html", {"error": "Invalid credentials"})
+        return render(request, "adminlogin.html", {"error": "Only admin can log in here"})
     return render(request, "adminlogin.html")
 
 def editproduct(request):
@@ -214,8 +189,7 @@ def editproduct(request):
             product.stock = int(stock)
             product.price = float(price)
             product.save()
-    products = ProductList.objects.all()
-    return render(request, "editproduct.html", {"products": products, "edit_product": edit_product})
+    return render_edit_product(request, edit_product)
 
 def vieworder(request):
     edit_order = None
@@ -225,7 +199,6 @@ def vieworder(request):
         if action == "add":
             customer_name = request.POST.get("new_customer_name", "")
             order_state = request.POST.get("new_order_state", "")
-            # Gather all product/quantity pairs
             product_boxes = []
             i = 0
             while True:
@@ -243,12 +216,10 @@ def vieworder(request):
             if not (customer_name and order_state and product_boxes):
                 error = "not enough information in the field"
             else:
-                # Create the order
                 order = OrderList.objects.create(
                     customer_name=customer_name,
                     order_state=order_state
                 )
-                # Create order items
                 for product_id, quantity in product_boxes:
                     product = ProductList.objects.get(productid=product_id)
                     OrderItem.objects.create(
@@ -263,14 +234,12 @@ def vieworder(request):
             selected = request.POST.getlist("selected_orders")
             if selected:
                 edit_order = OrderList.objects.get(orderid=selected[0])
-        elif request.method == "POST" and request.POST.get("action") == "save_edit":
+        elif action == "save_edit":
             orderid = request.POST.get("edit_orderid")
             customer_name = request.POST.get("edit_customer_name")
             order_state = request.POST.get("edit_order_state")
             order = OrderList.objects.get(orderid=orderid)
-            # Remove all existing items for this order
             order.items.all().delete()
-            # Gather all product/quantity pairs
             edit_product_boxes = []
             i = 0
             while True:
@@ -284,7 +253,6 @@ def vieworder(request):
                     i += 1
                 else:
                     break
-            # Add new items
             for product_id, quantity in edit_product_boxes:
                 product = ProductList.objects.get(productid=product_id)
                 OrderItem.objects.create(
@@ -292,11 +260,10 @@ def vieworder(request):
                     product=product,
                     quantity=quantity
                 )
-            # Update order info
             order.customer_name = customer_name
             order.order_state = order_state
             order.save()
-    # For displaying orders with their items:
+
     orders = OrderList.objects.all().order_by('-orderid')
     order_data = []
     for order in orders:
@@ -307,9 +274,4 @@ def vieworder(request):
             "products_str": products_str,
         })
     products = ProductList.objects.all()
-    return render(request, "vieworder.html", {
-        "order_data": order_data,
-        "products": products,
-        "edit_order": edit_order,
-        "error": error,
-    })
+    return render_view_order(request, order_data, products, edit_order, error)

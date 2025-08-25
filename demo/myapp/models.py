@@ -23,8 +23,8 @@ class OrderList(models.Model):
     customer_name = models.CharField(max_length=100)
     order_state = models.IntegerField(choices=[(0, 'Paid'), (1, 'Unpaid')], default=1)
     order_date = models.DateTimeField(auto_now_add=True)
-    voucher_discount = models.FloatField(default=0)  # percentage, e.g. 10 for 10%
-    final_price = models.FloatField(default=0)       # calculated after discount
+    voucher_discount = models.FloatField(default=0) 
+    final_price = models.FloatField(default=0)       
 
     def __str__(self):
         return f"Order {self.orderid} for {self.customer_name}"
